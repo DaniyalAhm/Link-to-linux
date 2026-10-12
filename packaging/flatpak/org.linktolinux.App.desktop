@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Link to Linux
+Comment=Connect your Android devices over your local network
+Exec=link-app
+Icon=org.linktolinux.App
+Terminal=false
+Categories=Network;Utility;

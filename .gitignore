@@ -1,0 +1,13 @@
+/target
+**/target
+# Built Rust .so files (rebuilt via cargo-ndk, see android/README.md)
+android/app/src/main/jniLibs/
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# Local Flatpak builds
+/.flatpak-builder/
+/flatpak-build/
+/flatpak-repo/
+/*.flatpak

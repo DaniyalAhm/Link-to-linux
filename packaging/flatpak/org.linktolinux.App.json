@@ -1,0 +1,89 @@
+{
+  "app-id": "org.linktolinux.App",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "50",
+  "sdk": "org.gnome.Sdk",
+  "command": "link-app",
+  "finish-args": [
+    "--share=network",
+    "--share=ipc",
+    "--socket=wayland",
+    "--socket=fallback-x11",
+    "--talk-name=org.freedesktop.Notifications"
+  ],
+  "modules": [
+    {
+      "name": "libxdo",
+      "buildsystem": "simple",
+      "build-commands": [
+        "make -j${FLATPAK_BUILDER_N_JOBS} libxdo.so PREFIX=/app",
+        "install -Dm755 libxdo.so /app/lib/libxdo.so.3",
+        "ln -s libxdo.so.3 /app/lib/libxdo.so"
+      ],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/jordansissel/xdotool.git",
+          "commit": "eb489de1b4fb3fd0cd935d68ae16ecd4c653ac7d"
+        }
+      ]
+    },
+    {
+      "name": "wl-clipboard",
+      "buildsystem": "meson",
+      "config-opts": [
+        "-Dzshcompletiondir=no",
+        "-Dfishcompletiondir=no"
+      ],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/bugaevc/wl-clipboard.git",
+          "commit": "3eb912c274042cd5deed6b478b39908a12f37498"
+        }
+      ]
+    },
+    {
+      "name": "link-to-linux",
+      "buildsystem": "simple",
+      "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin",
+        "build-args": [
+          "--share=network"
+        ],
+        "env": {
+          "CARGO_HOME": "/run/build/link-to-linux/cargo-home",
+          "CARGO_TARGET_DIR": "/run/build/link-to-linux/flatpak-target",
+          "RUSTFLAGS": "-L native=/app/lib"
+        }
+      },
+      "build-commands": [
+        "cargo build --locked --release -p link-daemon -p link-app --features link-app/ui",
+        "install -Dm755 flatpak-target/release/link-daemon /app/bin/link-daemon",
+        "install -Dm755 flatpak-target/release/link-app /app/bin/link-app",
+        "install -Dm644 packaging/flatpak/org.linktolinux.App.desktop /app/share/applications/org.linktolinux.App.desktop",
+        "install -Dm644 packaging/flatpak/org.linktolinux.App.svg /app/share/icons/hicolor/scalable/apps/org.linktolinux.App.svg"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "../..",
+          "skip": [
+            "target",
+            ".git",
+            ".flatpak-builder",
+            "flatpak-build",
+            "flatpak-repo",
+            "*.flatpak",
+            "android/.gradle",
+            "android/app/build",
+            "android/app/src/main/jniLibs"
+          ]
+        }
+      ]
+    }
+  ],
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.rust-stable"
+  ]
+}

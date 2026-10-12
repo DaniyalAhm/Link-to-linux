@@ -1,0 +1,8 @@
+--------- beginning of main
+10-11 21:51:07.459  5516  5516 I LinkToLinux: autoping 10.0.2.2:53536
+10-11 21:51:07.972  5516  5552 I LinkToLinux: ping 10.0.2.2:53536 -> {"ok":true,"peer":"10.0.2.2:53536","nonce":1791773467465560642,"pong_nonce":1791773467465560642,"pong_from":"01a12dfe-db1d-7542-be0d-230c1ffbde02"}
+10-11 22:05:14.618  5884  5884 I LinkToLinux: autoping 10.0.2.2:53536
+10-11 22:05:15.138  5884  5908 I LinkToLinux: pair-preview 10.0.2.2:53536 -> {"ok":true,"peer":"10.0.2.2:53536","fingerprint":"sha256:da5e95e4947ec754d7315eaeb55b5726af090295ca1a74ce9530738084af51ff"}
+10-11 22:05:15.664  5884  5908 I LinkToLinux: tls-ping 10.0.2.2:53536 -> {"ok":true,"peer":"10.0.2.2:53536","nonce":1791774315141694627,"pong_nonce":1791774315141694627,"pong_from":"01a12dfe-db1d-7542-be0d-230c1ffbde02"}
+10-11 22:05:52.039  5974  5974 I LinkToLinux: starting LinkService via intent
+10-11 22:05:52.594  5974  6029 I LinkToLinux: tls server start -> {"ok":true,"fingerprint":"sha256:0f5b16af4a35985b8edaa42c6e76f2dbdaca57c853cde5b24deee23d608d1683"}

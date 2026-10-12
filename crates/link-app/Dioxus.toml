@@ -1,0 +1,10 @@
+[application]
+name = "link-app"
+default_platform = "desktop"
+
+[application.desktop]
+binary = "link-app"
+
+[application.android]
+# Phase 3: `dx serve --platform android --features ui`
+# Needs GameActivity + FGS entries in AndroidManifest.xml (see android/README.md).

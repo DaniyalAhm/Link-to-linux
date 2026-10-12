@@ -1,0 +1,23 @@
+[package]
+name = "link-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Dioxus frontend for Link to Linux (Linux desktop + Android from one RSX codebase)"
+
+[[bin]]
+name = "link-app"
+path = "src/main.rs"
+
+[dependencies]
+link-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+base64 = "0.22"
+tokio.workspace = true
+dioxus = { version = "0.6", optional = true, features = ["desktop"] }
+
+[features]
+default = []
+ui = ["dep:dioxus"]

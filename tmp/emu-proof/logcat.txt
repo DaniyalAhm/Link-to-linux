@@ -1,0 +1,3 @@
+--------- beginning of main
+10-11 21:51:07.459  5516  5516 I LinkToLinux: autoping 10.0.2.2:53536
+10-11 21:51:07.972  5516  5552 I LinkToLinux: ping 10.0.2.2:53536 -> {"ok":true,"peer":"10.0.2.2:53536","nonce":1791773467465560642,"pong_nonce":1791773467465560642,"pong_from":"01a12dfe-db1d-7542-be0d-230c1ffbde02"}

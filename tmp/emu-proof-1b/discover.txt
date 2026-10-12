@@ -1,0 +1,2 @@
+found 1 device(s)
+01a12dfe-db1d-7542-be0d-230c1ffbde02 host1b linux [Pair, Notify, File, Clip]

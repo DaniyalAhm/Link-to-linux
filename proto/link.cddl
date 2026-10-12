@@ -1,0 +1,82 @@
+; Link to Linux wire protocol — CDDL source of truth (Phase 0, v1).
+; Transport: CBOR over QUIC/TLS (rustls, cert-pinned). Discovery via mDNS.
+
+protocol-version = 1
+
+device-id = tstr / (bstr .size 16) ; UUIDv7: JSON string / binary CBOR UUID
+fingerprint = tstr ; "sha256:hex"
+
+capability = "pair" / "notify" / "file" / "clip"
+
+device-info = {
+  id: device-id,
+  name: tstr,
+  os: tstr, ; "linux" / "android" / ...
+  protocol_version: uint,
+  quic_port: uint,
+  pubkey_fingerprint: fingerprint,
+  capabilities: [* capability],
+}
+
+envelope = {
+  from: device-id,
+  ? to: device-id,
+  kind: "pair" / "notify" / "file" / "clip",
+  body: bstr,
+}
+
+; MVP plugin bodies (v0.1):
+pair-body = { pair: bool } ; codes are derived locally, never transmitted
+notify-body = { id: tstr, title: tstr, body: tstr, ? dismiss: bool }
+file-body = { file-id: tstr, name: tstr, size: uint, offset: uint, data: bstr }
+clip-body = { mime: tstr, data: bstr }
+; Clipboard packets are accepted only over TLS with mutual key proof and a
+; certificate fingerprint bound to the declared paired device ID. Sync is
+; disabled until each endpoint enables it. data-b64 decodes to UTF-8 text <=
+; 32 KiB or PNG/JPEG/WebP image bytes <= 5 MiB.
+; Receivers enqueue accepted packets in FIFO arrival order (up to eight pending);
+; a full queue rejects the new packet so the sender can retry. The from field
+; lets a desktop hub relay a clip to other paired devices without echoing it.
+clipboard-packet = { op: "clip", id: tstr, from: device-id, mime: tstr, data-b64: tstr }
+clipboard-ack = { ok: bool, ? error: tstr }
+
+; Android SMS/MMS access requires explicit sharing and READ_SMS/SEND_SMS.
+; Contact search additionally requires READ_CONTACTS. All packets use pinned TLS.
+; Group addresses contain semicolon-separated phone numbers. RCS is unavailable.
+; Pages contain at most 100 items. Timestamps are milliseconds, including MMS.
+message-thread = { id: tstr, address: tstr, ? display_name: tstr / null, snippet: tstr, date: int }
+message-contact = { id: tstr, name: tstr, address: tstr }
+sms-message = { id: tstr, address: tstr, body: tstr, date: int,
+  direction: "inbound" / "outbound", ? state: tstr / null, ? sender_name: tstr / null }
+messages-packet = {
+  op: "messages_status" / "messages_list" / "messages_thread" / "messages_contacts" / "messages_send" /
+      "messages_status_result" / "messages_list_result" / "messages_thread_result" /
+      "messages_contacts_result" / "messages_send_result" / "messages_sent" / "messages_error",
+  from: device-id,
+  request_id: tstr,
+  ? threads: [* message-thread],
+  ? messages: [* sms-message],
+  ? contacts: [* message-contact],
+  ? thread_id: tstr / null,
+  ? address: tstr / null,
+  ? body: tstr / null,
+  ? error: tstr / null,
+  ? query: tstr / null,
+  ? offset: uint / null,
+  ? next_offset: uint / null,
+  ? enabled: bool / null,
+  ? display_name: tstr / null,
+  ? device_name: tstr / null,
+}
+
+; Phase 1a handshake (plaintext TCP, QUIC+TLS replaces in Phase 1b):
+ping = { nonce: uint, from: device-id }
+pong = { nonce: uint, from: device-id }
+
+; Two-sided pairing on a mutually key-authenticated TLS stream (protocol v1 extension).
+; Code: 6-digit decimal derived independently from the first 4 exporter bytes
+; modulo 1000000. Label EXPORTER-LinkToLinux-Pairing-v1, context session UTF-8.
+; Code is never sent over the wire. Deadline 120s; rejection/disconnect/expiry
+; saves no trust. Both local approvals are required before persisting the pin.
+pair-hello = { op: "pair", session: tstr, info: device-info }
+pair-decision = { op: "confirm", session: tstr, accept: bool }

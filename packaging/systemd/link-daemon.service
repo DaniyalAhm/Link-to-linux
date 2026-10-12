@@ -1,0 +1,13 @@
+[Unit]
+Description=Link to Linux background service (Phase 0)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.cargo/bin/link-daemon serve
+Restart=on-failure
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,29 @@
+[package]
+name = "link-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "OS-agnostic core: protocol, crypto, discovery, pairing, store for Link to Linux"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+ciborium = "0.2"
+uuid = { version = "1", features = ["v7", "serde"] }
+mdns-sd = "0.13"
+quinn = { version = "0.11", default-features = false, features = ["rustls-ring", "runtime-tokio"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = "0.26"
+rcgen = "0.13"
+sha2 = "0.10"
+tokio.workspace = true
+rusqlite = { version = "0.32", features = ["bundled"] }
+keyring = "3"
+zeroize = "1"
+base64 = "0.22"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }

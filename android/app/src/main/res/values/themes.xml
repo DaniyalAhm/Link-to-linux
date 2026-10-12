@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.LinkToLinux" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/link_primary</item>
+        <item name="colorSecondary">@color/link_primary</item>
+        <item name="android:colorAccent">@color/link_primary</item>
+        <item name="android:statusBarColor">@color/link_background</item>
+        <item name="android:navigationBarColor">@color/link_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+    <style name="Link.Card" parent="Widget.Material3.CardView.Outlined">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">8dp</item>
+        <item name="android:layout_marginBottom">4dp</item>
+        <item name="cardBackgroundColor">@color/link_surface</item>
+        <item name="strokeColor">#2A3853</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="contentPadding">14dp</item>
+    </style>
+    <style name="Link.SectionTitle" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">18dp</item>
+        <item name="android:textColor">@color/link_text</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+</resources>

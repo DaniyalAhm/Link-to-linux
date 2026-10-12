@@ -1,0 +1,26 @@
+[workspace]
+members = [
+  "crates/link-core",
+  "crates/link-daemon",
+  "crates/link-app",
+  "crates/link-android-svc",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Link to Linux Contributors"]
+repository = "https://github.com/link-to-linux/link-to-linux"
+
+[workspace.dependencies]
+link-core = { path = "crates/link-core" }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "signal", "process"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap = { version = "4", features = ["derive"] }
+thiserror = "2"
