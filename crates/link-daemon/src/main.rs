@@ -3,6 +3,7 @@ use tracing_subscriber::EnvFilter;
 
 mod ipc;
 mod service;
+mod settings;
 
 #[derive(Debug, Parser)]
 #[command(

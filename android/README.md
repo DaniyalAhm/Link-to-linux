@@ -24,6 +24,9 @@ check. These checks are ping/pong, not permanent message sessions. Changes to
 a trusted certificate fail closed and require unpairing before pairing again.
 
 Clipboard sync is off by default; turn on **Clipboard sync** on both devices.
+Both devices remember this choice across app and background-service restarts.
+Linux saves it in `settings.json` in the app's data directory; Android saves
+sharing choices in its app preferences. The Linux theme is remembered separately.
 Android's foreground service applies incoming clips while the
 activity is minimized. Android only reads local clipboard data while Link has
 window focus, per Android's clipboard privacy restrictions; returning to Link

@@ -3,6 +3,16 @@
     <style name="Theme.LinkToLinux" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">@color/link_primary</item>
         <item name="colorSecondary">@color/link_primary</item>
+        <item name="colorSurfaceContainer">#080808</item>
+        <item name="colorSurfaceContainerHigh">#121212</item>
+        <item name="colorSurfaceContainerHighest">#181818</item>
+        <item name="colorSurfaceVariant">#121212</item>
+        <item name="android:windowBackground">@color/link_background</item>
+        <item name="colorSurface">@color/link_surface</item>
+        <item name="colorOnSurface">@color/link_text</item>
+        <item name="colorOnSurfaceVariant">@color/link_muted</item>
+        <item name="colorOnPrimary">#082F49</item>
+        <item name="colorOutline">#333333</item>
         <item name="android:colorAccent">@color/link_primary</item>
         <item name="android:statusBarColor">@color/link_background</item>
         <item name="android:navigationBarColor">@color/link_background</item>
@@ -15,9 +25,10 @@
         <item name="android:layout_marginTop">8dp</item>
         <item name="android:layout_marginBottom">4dp</item>
         <item name="cardBackgroundColor">@color/link_surface</item>
-        <item name="strokeColor">#2A3853</item>
+        <item name="strokeColor">#242424</item>
         <item name="strokeWidth">1dp</item>
-        <item name="contentPadding">14dp</item>
+        <item name="contentPadding">18dp</item>
+        <item name="cardCornerRadius">20dp</item>
     </style>
     <style name="Link.SectionTitle" parent="TextAppearance.Material3.TitleMedium">
         <item name="android:layout_width">match_parent</item>

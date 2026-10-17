@@ -86,8 +86,12 @@ class LinkService : Service() {
                     if (gallery != null) handleGalleryRequest(gallery)
                 } catch (e: Exception) { Log.w("LinkToLinux", "gallery request failed: ${e.message}") }
                 try {
-                    val messages = JSONObject(nativeMessagesTake()).optJSONObject("messages")
-                    if (messages != null) handleMessagesRequest(messages)
+                    // Drain bursts without imposing a polling delay per request.
+                    // Bound the batch so clipboard and gallery work still runs.
+                    for (index in 0 until 8) {
+                        val messages = JSONObject(nativeMessagesTake()).optJSONObject("messages") ?: break
+                        handleMessagesRequest(messages)
+                    }
                 } catch (e: Exception) { Log.w("LinkToLinux", "messages request failed: ${e.message}") }
                 main.post {
                     clipboardPollInFlight = false

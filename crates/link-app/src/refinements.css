@@ -1,0 +1,56 @@
+:root{--canvas:#f6f8fb;--surface:#fff;--line:#dde4ed;--text:#182638;--muted:#5c6d80;--blue:#086cb8;--blue-light:#e9f3fc}
+button,input,textarea,select{-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #278bce;outline-offset:3px}
+button{min-height:40px;transition:background .15s,border-color .15s}
+.window-chrome{background:var(--surface)}
+.sidebar{background:var(--surface);padding-top:26px}
+.brand-mark{border-radius:11px;box-shadow:none}
+.brand-name{font-size:15px;letter-spacing:-.03em}
+.side-caption{font-size:10px;letter-spacing:.12em}
+.nav-list{gap:6px}
+.nav-item{min-height:46px;border-radius:10px;color:var(--muted);padding:11px 13px}
+.nav-item.selected{background:var(--blue-light);color:var(--blue);box-shadow:none}
+.nav-item:hover{background:#f0f5fa}
+.nav-icon{font-size:19px}
+.sidebar-device{font-size:12px;line-height:1.7}
+.app-main{padding-right:32px;padding-left:32px}
+.topbar{height:88px;margin-bottom:24px;gap:16px}
+.topbar h1{font-size:25px;letter-spacing:-.04em}
+.eyebrow{font-size:10px;letter-spacing:.09em;line-height:1.6}
+.service-badge{max-width:45%;white-space:normal;line-height:1.4;overflow-wrap:anywhere}
+.hero{border-radius:20px;background:linear-gradient(120deg,#fff,#eaf4fc);padding:32px;min-height:240px}
+.hero h2{font-size:32px;line-height:1.15;max-width:420px;letter-spacing:-.045em}
+.hero .actions{margin-top:20px}
+.hero .muted{max-width:450px;line-height:1.7}
+.phone-outline{background:#fff8;border-color:#8eb7d5;border-radius:23px}
+.card{border-radius:15px;box-shadow:none;padding:22px}
+.stat{border-radius:14px;box-shadow:none;padding:21px}
+.stat-value{font-size:28px;letter-spacing:-.04em}
+.stat-label{margin-top:7px}
+.home-columns{align-items:start}
+.muted{line-height:1.65}
+.status{border-radius:10px;line-height:1.55;overflow-wrap:anywhere}
+.sms-heading{gap:16px;flex-wrap:wrap}
+.sms-new-button{min-height:40px}
+.sms-thread-button{min-height:76px}
+.sms-thread-list,.sms-conversation{border-radius:14px}
+.sms-compose textarea:focus-visible{outline-offset:0}
+.sms-message{box-shadow:none;line-height:1.6}
+.sms-thread-snippet{line-height:1.5}
+.theme-dark{--canvas:#000;--surface:#050505;--text:#edf4fa;--muted:#b0c1d0;--line:#242424;--blue:#7dd3fc;--blue-light:#101820;background:var(--canvas)}
+.theme-dark .app-shell,.theme-dark .app-main{background:var(--canvas)}
+.theme-dark .window-chrome,.theme-dark .sidebar,.theme-dark .card,.theme-dark .stat{background:var(--surface);border-color:var(--line)}
+.theme-dark .nav-item{color:var(--muted)}
+.theme-dark .nav-item.selected,.theme-dark .nav-item:hover{background:var(--blue-light);color:var(--blue)}
+.theme-dark .hero{background:#050505;border-color:var(--line)}
+.theme-dark .phone-outline{background:#000;border-color:#426b8b;box-shadow:15px 10px 0 -5px #121212}
+.theme-dark .sms-thread-list,.theme-dark .sms-conversation,.theme-dark .sms-compose{background:var(--surface)}
+.theme-dark .sms-message-list,.theme-dark .sms-compose textarea,.theme-dark .sms-recipient,.theme-dark .sms-device-select{background:var(--canvas);color:var(--text)}
+.theme-dark .sms-message.inbound{background:#141414;border-color:var(--line)}
+.theme-dark .sms-message.outbound{background:#102337;border-color:#1a3a55}
+.theme-dark .sms-thread-button.selected{background:var(--blue-light);color:var(--blue)}
+.theme-dark .sms-thread-snippet,.theme-dark .sms-thread-number,.theme-dark .sms-thread-time{color:var(--muted)}
+@media(max-width:1000px){.home-columns{grid-template-columns:1fr}.topbar h1{font-size:22px}.hero h2{font-size:28px}}
+@media(max-width:850px){.sidebar{padding:20px 8px}.app-main{padding-right:20px;padding-left:20px}.hero{padding:24px}.service-badge{font-size:11px}}
+@media(max-width:600px){.sidebar{padding:5px 6px}.nav-list{grid-template-columns:repeat(6,minmax(0,1fr));gap:0}.nav-item{min-height:50px;padding:4px 1px;gap:1px;border-radius:8px}.nav-icon{font-size:18px}.nav-label{font-size:8px}.app-main{padding-right:14px;padding-left:14px}.topbar{height:74px;gap:8px}.topbar h1{font-size:21px}.eyebrow{font-size:8px}.service-badge{padding:5px 8px;max-width:43%}.hero h2{font-size:27px}.stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.stat{padding:14px 10px}.stat-value{font-size:23px}.stat-label{font-size:10px}.card{padding:17px}.sms-thread-list{padding:8px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}

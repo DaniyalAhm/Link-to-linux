@@ -135,6 +135,23 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        val pageTabs = findViewById<com.google.android.material.button.MaterialButtonToggleGroup>(R.id.pageTabs)
+        val uiPreferences = getSharedPreferences("link", MODE_PRIVATE)
+        fun showPage(sharing: Boolean) {
+            findViewById<android.view.View>(R.id.devicesPage).visibility = if (sharing) android.view.View.GONE else android.view.View.VISIBLE
+            findViewById<android.view.View>(R.id.sharingPage).visibility = if (sharing) android.view.View.VISIBLE else android.view.View.GONE
+        }
+        val sharing = uiPreferences.getBoolean("sharing_page", false)
+        pageTabs.check(if (sharing) R.id.sharingTab else R.id.devicesTab)
+        showPage(sharing)
+        pageTabs.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                val selectedSharing = checkedId == R.id.sharingTab
+                showPage(selectedSharing)
+                findViewById<android.widget.ScrollView>(R.id.pageScroll).scrollTo(0, 0)
+                uiPreferences.edit().putBoolean("sharing_page", selectedSharing).apply()
+            }
+        }
         pendingNotificationClipboardSend = isNotificationClipboardSend(intent)
         deviceName = phoneDisplayName()
         lan = LanDiscovery(this)
@@ -485,6 +502,11 @@ class MainActivity : AppCompatActivity() {
         rendered = signature
         val list = findViewById<LinearLayout>(R.id.devicesList)
         list.removeAllViews()
+        if (sessions.length() == 0 && trusted.isEmpty() && nearby.isEmpty()) {
+            val emptyCard = deviceCard()
+            emptyCard.addView(label("No devices yet\nOpen Link on your desktop and connect both devices to the same network. Nearby devices will appear here.", 14f, false, R.color.link_muted))
+            list.addView(emptyCard)
+        }
         for (index in 0 until sessions.length()) {
             val session = sessions.getJSONObject(index)
             val peer = session.getJSONObject("peer")
@@ -546,12 +568,12 @@ class MainActivity : AppCompatActivity() {
         setPadding(0, dp(5), 0, dp(5))
     }
     private fun deviceCard() = com.google.android.material.card.MaterialCardView(this).apply {
-        radius = dp(14).toFloat()
+        radius = dp(20).toFloat()
         setCardBackgroundColor(getColor(R.color.link_surface))
-        strokeColor = getColor(R.color.link_primary)
+        strokeColor = android.graphics.Color.parseColor("#242424")
         strokeWidth = dp(1)
         useCompatPadding = true
-        setContentPadding(dp(14), dp(10), dp(14), dp(10))
+        setContentPadding(dp(18), dp(14), dp(18), dp(14))
         val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         params.bottomMargin = dp(8)
         layoutParams = params

@@ -312,10 +312,37 @@ impl PairManager {
             .messages_pending
             .lock()
             .map_err(|e| CoreError::Storage(e.to_string()))?;
+        // Polling reads are replaceable; sends and their completion events are
+        // not. Keep only the newest equivalent read while a consumer is busy.
+        if packet.is_read_request() {
+            if let Some(index) = queue.iter().position(|old| {
+                old.from == packet.from
+                    && old.op == packet.op
+                    && old.thread_id == packet.thread_id
+                    && old.offset.unwrap_or(0) == packet.offset.unwrap_or(0)
+                    && old.query == packet.query
+            }) {
+                queue[index] = packet;
+                return Ok(());
+            }
+        }
+        if packet.op == "messages_send" && queue.len() >= MAX_PENDING_MESSAGES {
+            if let Some(index) = queue.iter().rposition(MessagesPacket::is_read_request) {
+                queue.remove(index);
+            }
+        }
         if queue.len() >= MAX_PENDING_MESSAGES {
             return Err(CoreError::InvalidData("messages queue is full".into()));
         }
-        queue.push_back(packet);
+        if packet.op == "messages_send" {
+            let index = queue
+                .iter()
+                .position(MessagesPacket::is_read_request)
+                .unwrap_or(queue.len());
+            queue.insert(index, packet);
+        } else {
+            queue.push_back(packet);
+        }
         Ok(())
     }
     pub async fn send_gallery_at(
@@ -966,6 +993,14 @@ pub struct MessagesPacket {
     #[serde(default)]
     pub query: Option<String>,
 }
+impl MessagesPacket {
+    fn is_read_request(&self) -> bool {
+        matches!(
+            self.op.as_str(),
+            "messages_status" | "messages_list" | "messages_thread" | "messages_contacts"
+        )
+    }
+}
 fn code(binding: &[u8; 32]) -> String {
     format!(
         "{:06}",
@@ -1058,6 +1093,74 @@ mod tests {
             serde_json::from_value::<GalleryPacket>(serde_json::to_value(messages).unwrap())
                 .is_err()
         );
+    }
+
+    #[test]
+    fn messages_refresh_backlog_does_not_block_or_duplicate_sends() {
+        let (manager, store) = manager_with_store("phone");
+        let peer = crate::DeviceId::generate();
+        let fingerprint = "sha256:linux";
+        store
+            .insert(PairedDevice {
+                id: peer,
+                name: "Linux".into(),
+                os: "linux".into(),
+                cert_fingerprint: fingerprint.into(),
+                address: None,
+            })
+            .unwrap();
+        let packet = |op: &str, request: usize, thread: usize| -> MessagesPacket {
+            serde_json::from_value(serde_json::json!({
+                "op": op, "from": peer, "request_id": request.to_string(),
+                "thread_id": thread.to_string()
+            }))
+            .unwrap()
+        };
+        // Hundreds of polls for the same page occupy one slot and retain the latest ID.
+        for request in 0..100 {
+            manager
+                .receive_messages(packet("messages_thread", request, 0), fingerprint)
+                .unwrap();
+        }
+        assert_eq!(manager.take_messages().unwrap().unwrap().request_id, "99");
+        assert!(manager.take_messages().unwrap().is_none());
+        // Distinct reads fill the queue, but an explicit send can still enter.
+        for thread in 0..MAX_PENDING_MESSAGES {
+            manager
+                .receive_messages(packet("messages_thread", thread, thread), fingerprint)
+                .unwrap();
+        }
+        for request in 100..102 {
+            manager
+                .receive_messages(packet("messages_send", request, 0), fingerprint)
+                .unwrap();
+        }
+        for request in 100..102 {
+            let sent = manager.take_messages().unwrap().unwrap();
+            assert_eq!(sent.op, "messages_send");
+            assert_eq!(sent.request_id, request.to_string());
+        }
+        let mut reads = 0;
+        while let Some(read) = manager.take_messages().unwrap() {
+            assert_eq!(read.op, "messages_thread");
+            reads += 1;
+        }
+        assert_eq!(reads, MAX_PENDING_MESSAGES - 2);
+        // Never discard an accepted send to make room for another one.
+        for request in 0..MAX_PENDING_MESSAGES {
+            manager
+                .receive_messages(packet("messages_send", request, 0), fingerprint)
+                .unwrap();
+        }
+        assert!(manager
+            .receive_messages(packet("messages_send", 999, 0), fingerprint)
+            .is_err());
+        for request in 0..MAX_PENDING_MESSAGES {
+            assert_eq!(
+                manager.take_messages().unwrap().unwrap().request_id,
+                request.to_string()
+            );
+        }
     }
 
     #[test]
@@ -1212,6 +1315,157 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
         panic!("pairing did not finish");
+    }
+
+    #[tokio::test]
+    async fn clipboard_three_devices_exchange_text_and_images_over_pinned_tls() {
+        let (desktop, desktop_store) = manager_with_store("desktop");
+        let (phone_a, store_a) = manager_with_store("phone-a");
+        let (phone_b, store_b) = manager_with_store("phone-b");
+        for (store, peer) in [
+            (&desktop_store, &phone_a),
+            (&desktop_store, &phone_b),
+            (&store_a, &desktop),
+            (&store_b, &desktop),
+        ] {
+            store
+                .insert(PairedDevice {
+                    id: peer.local.id,
+                    name: peer.local.name.clone(),
+                    os: peer.local.os.clone(),
+                    cert_fingerprint: peer.identity.fingerprint(),
+                    address: None,
+                })
+                .unwrap();
+        }
+        for manager in [&desktop, &phone_a, &phone_b] {
+            manager.set_clipboard_enabled(true);
+        }
+        let (desk_address, desk_stop, desk_task) = serve(desktop.clone()).await;
+        let (a_address, a_stop, a_task) = serve(phone_a.clone()).await;
+        let (b_address, b_stop, b_task) = serve(phone_b.clone()).await;
+        let fixtures: [(&str, &[u8]); 4] = [
+            ("text/plain", "Multi-way café 👋".as_bytes()),
+            ("image/png", b"\x89PNG\r\n\x1a\nfixture"),
+            ("image/jpeg", b"\xff\xd8\xfffixture"),
+            ("image/webp", b"RIFF\x04\0\0\0WEBPfixture"),
+        ];
+        for (mime, bytes) in fixtures {
+            let data = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes);
+            // Desktop -> both phones, with byte-for-byte payload checks.
+            for (phone, address) in [(&phone_a, &a_address), (&phone_b, &b_address)] {
+                desktop
+                    .send_clipboard_at(&phone.local.id, address.clone(), mime.into(), data.clone())
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    phone.take_clipboard().unwrap().unwrap(),
+                    (desktop.local.id.to_string(), mime.into(), data.clone())
+                );
+            }
+            // Each phone -> desktop -> the other phone (the UI uses this hub route).
+            for (source, other, address) in [
+                (&phone_a, &phone_b, &b_address),
+                (&phone_b, &phone_a, &a_address),
+            ] {
+                source
+                    .send_clipboard_at(
+                        &desktop.local.id,
+                        desk_address.clone(),
+                        mime.into(),
+                        data.clone(),
+                    )
+                    .await
+                    .unwrap();
+                let (from, received_mime, received_data) =
+                    desktop.take_clipboard().unwrap().unwrap();
+                assert_eq!(from, source.local.id.to_string());
+                assert_eq!(received_mime, mime);
+                assert_eq!(received_data, data);
+                desktop
+                    .send_clipboard_at(
+                        &other.local.id,
+                        address.clone(),
+                        received_mime,
+                        received_data,
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    other.take_clipboard().unwrap().unwrap(),
+                    (desktop.local.id.to_string(), mime.into(), data.clone())
+                );
+                assert!(source.take_clipboard().unwrap().is_none());
+            }
+        }
+        phone_b.set_clipboard_enabled(false);
+        let data = base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            b"disabled fixture",
+        );
+        assert!(desktop
+            .send_clipboard_at(&phone_b.local.id, b_address, "text/plain".into(), data)
+            .await
+            .is_err());
+        assert!(phone_b.take_clipboard().unwrap().is_none());
+        for stop in [desk_stop, a_stop, b_stop] {
+            let _ = stop.send(());
+        }
+        for task in [desk_task, a_task, b_task] {
+            task.await.unwrap().unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn messages_send_over_tls_succeeds_with_a_full_refresh_queue() {
+        let (phone, phone_store) = manager_with_store("phone");
+        let (linux, linux_store) = manager_with_store("linux");
+        for (store, peer) in [(&phone_store, &linux), (&linux_store, &phone)] {
+            store
+                .insert(PairedDevice {
+                    id: peer.local.id,
+                    name: peer.local.name.clone(),
+                    os: peer.local.os.clone(),
+                    cert_fingerprint: peer.identity.fingerprint(),
+                    address: None,
+                })
+                .unwrap();
+        }
+        let (address, stop, server) = serve(phone.clone()).await;
+        // No consumer drains the phone queue: reproduce a busy Android worker.
+        for thread in 0..MAX_PENDING_MESSAGES {
+            let refresh: MessagesPacket = serde_json::from_value(serde_json::json!({
+                "op": "messages_thread", "from": linux.local.id,
+                "request_id": format!("refresh-{thread}"), "thread_id": thread.to_string()
+            }))
+            .unwrap();
+            linux
+                .send_messages_at(&phone.local.id, address.clone(), refresh)
+                .await
+                .unwrap();
+        }
+        let send: MessagesPacket = serde_json::from_value(serde_json::json!({
+            "op": "messages_send", "from": linux.local.id,
+            "request_id": "send-under-load", "address": "+15550109123",
+            "body": "Queue regression fixture"
+        }))
+        .unwrap();
+        let result = linux.send_messages_at(&phone.local.id, address, send).await;
+        let _ = stop.send(());
+        server.await.unwrap().unwrap();
+        result.expect("refresh backlog must not reject a send over TLS");
+        let received = phone.take_messages().unwrap().unwrap();
+        assert_eq!(received.op, "messages_send");
+        assert_eq!(received.request_id, "send-under-load");
+        assert_eq!(received.address.as_deref(), Some("+15550109123"));
+        assert_eq!(received.body.as_deref(), Some("Queue regression fixture"));
+        for _ in 1..MAX_PENDING_MESSAGES {
+            assert_eq!(
+                phone.take_messages().unwrap().unwrap().op,
+                "messages_thread"
+            );
+        }
+        assert!(phone.take_messages().unwrap().is_none());
     }
 
     #[tokio::test]

@@ -107,7 +107,7 @@ fn load_dark_mode() -> bool {
         .ok()
         .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
         .and_then(|value| value.get("dark_mode").and_then(serde_json::Value::as_bool))
-        .unwrap_or(false)
+        .unwrap_or(true)
 }
 
 fn save_dark_mode(enabled: bool) {
@@ -165,6 +165,7 @@ fn App() -> Element {
     let window = dioxus::desktop::use_window();
     let mut address = use_signal(String::new);
     let mut clip_enabled = use_signal(|| false);
+    let mut clip_setting_busy = use_signal(|| false);
     let mut clip_notice = use_signal(|| "Clipboard sync is off".to_string());
     let mut gallery_packets = use_signal(Vec::<link_core::pair_session::GalleryPacket>::new);
     let mut message_packets = use_signal(Vec::<link_core::pair_session::MessagesPacket>::new);
@@ -237,14 +238,22 @@ fn App() -> Element {
             Ok(c) => c,
             Err(_) => return,
         };
-        if let Ok(value) = client.clipboard_status().await {
-            clip_enabled.set(value["enabled"].as_bool().unwrap_or(false));
-        }
         let mut last_clip: Option<(String, String)> = None;
         let mut sent_to = HashSet::<String>::new();
         let mut retry_after = HashMap::<String, tokio::time::Instant>::new();
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            if !*clip_setting_busy.read() {
+                if let Ok(value) = client.clipboard_status().await {
+                    if !*clip_setting_busy.read() {
+                        let enabled = value["enabled"].as_bool().unwrap_or(false);
+                        if enabled != *clip_enabled.read() {
+                            clip_enabled.set(enabled);
+                            clip_notice.set(if enabled { "Clipboard sync enabled" } else { "Clipboard sync is off" }.into());
+                        }
+                    }
+                }
+            }
             if !*clip_enabled.read() {
                 last_clip = None;
                 sent_to.clear();
@@ -755,6 +764,7 @@ fn App() -> Element {
         style { "{DEVICE_MENU_STYLE}" }
         style { "{MESSAGES_STYLE}" }
         style { "{MESSAGES_DETAIL_STYLE}" }
+        style { {include_str!("refinements.css")} }
         div { class:if *dark_mode.read() {"window-frame theme-dark"} else {"window-frame"},
             div { class:"window-chrome",
                 div { class:"window-drag-region", onmousedown:move |_| drag_window.drag(),
@@ -793,15 +803,16 @@ fn App() -> Element {
                 }
                 div { class:"side-caption", "Your connection" }
                 div { class:"nav-list",
-                    button { class:if *active_tab.read()=="home" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("home".into()), span {class:"nav-icon","⌂"} span {class:"nav-label","Home"} }
-                    button { class:if *active_tab.read()=="photos" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("photos".into()), span {class:"nav-icon","▧"} span {class:"nav-label","Photos"} }
-                    if !enabled_message_pairings.is_empty() {button { class:if *active_tab.read()=="messages" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("messages".into()), span {class:"nav-icon","✉"} span {class:"nav-label","Messages"} }}
-                    button { class:if *active_tab.read()=="clipboard" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("clipboard".into()), span {class:"nav-icon","▤"} span {class:"nav-label","Clipboard"} }
-                    button { class:if *active_tab.read()=="notifications" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("notifications".into()), span {class:"nav-icon","◉"} span {class:"nav-label","Notifications"} }
+                    button { title:"Home", class:if *active_tab.read()=="home" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("home".into()), span {class:"nav-icon","⌂"} span {class:"nav-label","Home"} }
+                    button { title:"Photos", class:if *active_tab.read()=="photos" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("photos".into()), span {class:"nav-icon","▧"} span {class:"nav-label","Photos"} }
+                    button { title:"Messages", class:if *active_tab.read()=="messages" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("messages".into()), span {class:"nav-icon","✉"} span {class:"nav-label","Messages"} }
+                    button { title:"Clipboard", class:if *active_tab.read()=="clipboard" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("clipboard".into()), span {class:"nav-icon","▤"} span {class:"nav-label","Clipboard"} }
+                    button { title:"Notifications", class:if *active_tab.read()=="notifications" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("notifications".into()), span {class:"nav-icon","◉"} span {class:"nav-label","Notifications"} }
+                    button { title:"Devices", class:if *active_tab.read()=="devices" {"nav-item selected"} else {"nav-item"}, onclick:move |_| active_tab.set("devices".into()), span {class:"nav-icon","⊞"} span {class:"nav-label","Devices"} }
                 }
                 div { class:"sidebar-device",
                     div {class:"device-title","PAIRED DEVICES"}
-                    div {class:"device-indicator",span {class:"dot"},"{paired_count} connected"}
+                    div {class:"device-indicator","{paired_count} paired"}
                 }
             }
             main { class:if *active_tab.read()=="messages" {"app-main messaging"} else {"app-main"},
@@ -816,7 +827,7 @@ fn App() -> Element {
                         div {class:"hero",
                             div {
                                 div {class:"eyebrow","YOUR PHONE, CONNECTED"}
-                                h2 {"Everything in sync."}
+                                h2 {"Your phone, at your desk."}
                                 p {class:"muted","Keep your Android photos, clipboard, and notifications close while your devices stay paired over your local network."}
                                 div {class:"actions",
                                     button {onclick:move |_| active_tab.set("photos".into()),"Open photos"}
@@ -828,7 +839,7 @@ fn App() -> Element {
                         div {class:"stats",
                             div {class:"stat",div {class:"stat-value","{paired_count}"},div {class:"stat-label","Paired devices"}}
                             div {class:"stat",div {class:"stat-value",if *clip_enabled.read() {"On"} else {"Off"}},div {class:"stat-label","Clipboard sync"}}
-                            div {class:"stat",div {class:"stat-value","Ready"},div {class:"stat-label","Secure local link"}}
+                            div {class:"stat",div {class:"stat-value","TLS"},div {class:"stat-label","Encrypted local connection"}}
                         }
                         div {class:"home-columns",
                             div {class:"card",
@@ -947,7 +958,18 @@ fn App() -> Element {
                         h2 {class:"section-title","Clipboard sync"}
                         div {class:"card row",
                             div {span {class:"name","{clip_notice}"}p {class:"muted","Text and PNG/JPEG/WebP images sync with trusted devices while this app is open. Text is limited to 32 KiB and images to 5 MiB; clipboard contents are never saved."}}
-                            button {class:"secondary",onclick:move |_| {let enabled=!*clip_enabled.read();clip_enabled.set(enabled);clip_notice.set(if enabled {"Clipboard sync enabled"} else {"Clipboard sync is off"}.into());spawn(async move {if let Ok(client)=DaemonClient::discover(){let _=client.clipboard_enabled(enabled).await;}});},if *clip_enabled.read(){"Turn off"}else{"Turn on"}}
+                            button {class:"secondary",disabled:*clip_setting_busy.read(),onclick:move |_| {
+                                let enabled=!*clip_enabled.read();
+                                clip_setting_busy.set(true);
+                                spawn(async move {
+                                    let result=async {DaemonClient::discover()?.clipboard_enabled(enabled).await}.await;
+                                    match result {
+                                        Ok(()) => {clip_enabled.set(enabled);clip_notice.set(if enabled {"Clipboard sync enabled"} else {"Clipboard sync is off"}.into());}
+                                        Err(error) => clip_notice.set(format!("Could not save clipboard setting: {error}")),
+                                    }
+                                    clip_setting_busy.set(false);
+                                });
+                            },if *clip_enabled.read(){"Turn off"}else{"Turn on"}}
                         }
                         div {class:"card",h2 {class:"subhead","About Android clipboard access"}p {class:"muted","Android limits when apps can read copied content in the background. Use the Send clipboard action in the Android running notification when needed."}}
                     }

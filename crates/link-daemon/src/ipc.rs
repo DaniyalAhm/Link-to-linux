@@ -59,6 +59,7 @@ pub async fn serve(
     listener: tokio::net::UnixListener,
     manager: Arc<PairManager>,
     tracker: Arc<PresenceTracker>,
+    settings: Arc<crate::settings::Settings>,
     mut stop: tokio::sync::watch::Receiver<bool>,
 ) -> anyhow::Result<()> {
     let _guard = SocketGuard(socket_path());
@@ -69,6 +70,7 @@ pub async fn serve(
                 let (mut socket,_) = accepted?;
                 let manager = manager.clone();
                 let tracker = tracker.clone();
+                let settings = settings.clone();
                 tokio::spawn(async move {
                     let result = tokio::time::timeout(std::time::Duration::from_secs(15),async {
                         let bytes = link_core::transport::read_frame(&mut socket).await?;
@@ -82,7 +84,7 @@ pub async fn serve(
                             Request::Confirm {session,code,accept} => json!({"ok":true,"pairing":manager.confirm(&session,&code,accept)?}),
                             Request::Pairs => json!({"ok":true,"pairings":manager.pairs()?}),
                             Request::Unpair {id} => {manager.unpair(&id.parse()?)?;json!({"ok":true})},
-                            Request::ClipboardEnabled {enabled} => {manager.set_clipboard_enabled(enabled);json!({"ok":true,"enabled":enabled})},
+                            Request::ClipboardEnabled {enabled} => {settings.set_clipboard(&manager,enabled)?;json!({"ok":true,"enabled":enabled})},
                             Request::ClipboardStatus => json!({"ok":true,"enabled":manager.clipboard_enabled()}),
                             Request::ClipboardTake => json!({"ok":true,"enabled":manager.clipboard_enabled(),"clipboard":manager.take_clipboard()?}),
                             Request::ClipboardSend {id,mime,data_b64} => {manager.send_clipboard(&id.parse()?,mime,data_b64).await?;json!({"ok":true})},

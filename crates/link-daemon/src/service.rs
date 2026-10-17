@@ -64,6 +64,8 @@ pub async fn serve(name: &str, port: u16) -> anyhow::Result<()> {
         identity.clone(),
         std::sync::Arc::new(store(&dir)),
     ));
+    let settings = std::sync::Arc::new(crate::settings::Settings::load(&dir)?);
+    settings.restore(&manager)?;
     // mDNS registration for LAN discovery (own record; kept alive while serving).
     let short = info.id.to_string().chars().take(8).collect::<String>();
     let instance = format!("{}-{short}", info.name);
@@ -84,6 +86,7 @@ pub async fn serve(name: &str, port: u16) -> anyhow::Result<()> {
         ipc_listener,
         manager.clone(),
         tracker.clone(),
+        settings,
         stop_rx.clone(),
     ));
     let announce = tokio::spawn(link_core::discovery::announce_loop(
